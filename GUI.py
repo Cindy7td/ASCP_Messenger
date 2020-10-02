@@ -10,7 +10,7 @@ version = [48,48,48,48,49]
 function = [48,48]
 state = [48,48,48,48]
 id_session = [48,48,48,48] 
-key = ""
+#key = bytearray()
 
 class GUI:
     client_socket = None
@@ -29,7 +29,7 @@ class GUI:
     def initialize_socket(self):
         self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         remote_ip = '13.57.9.228' 
-        remote_port = 3023 
+        remote_port = 3024 
         self.client_socket.connect((remote_ip, remote_port)) 
 
     def initialize_gui(self):
@@ -54,19 +54,22 @@ class GUI:
     def receive_message_from_server(self, so):
         while True:
             buffer = so.recv(1024)
+            key = self.name_widget.get()
             if not buffer:
                 break
-            #k = pyDes.des(key, pyDes.ECB, "\0\0\0\0\0\0\0\0", pad=None, padmode=pyDes.PAD_PKCS5)
-            #buffer = k.decrypt(buffer)
+            #key_hex= "ff5ca85bccd4c387"
+            key1 = bytes.fromhex(key)
+            k = pyDes.des(key1, pyDes.ECB, "\0\0\0\0\0\0\0\0", pad=None, padmode=pyDes.PAD_PKCS5)
+            msg = k.decrypt(buffer)
             decrypted = ""
-            end = buffer[9]
+            end = msg[9]
             print(end)
             x = 0
             y = 19
             while x < end:
                 x+=1
                 y+=1
-                letra = chr(buffer[y])
+                letra = chr(msg[y])
                 decrypted += letra
             
             self.chat_transcript_area.insert('end', decrypted + '\n')
@@ -106,13 +109,20 @@ class GUI:
     def on_join(self):
         self.name_widget.config(state='disabled')
         newJoined =  self.encrypt(" " + self.name_widget.get())
-        key = newJoined
-        #print(newJoined)
-        #tam =  len(newJoined)
-        #lista =  self.encrypt(str(tam))
-        #message = bytearray(ASCP+version+lista+function+state+id_session+newJoined)
-        #print(message)
-        #self.client_socket.send(message)
+        end = len(newJoined)
+        x=0
+        ktostring = ""
+        
+        while x < end-1:
+            x+=1
+            letra = chr(newJoined[x])
+            ktostring += letra
+       
+        ktobytes = bytes.fromhex(ktostring)
+        
+        key = ktobytes
+        print(key)
+
 
     def on_enter_key_pressed(self, event):
         if len(self.name_widget.get()) == 0:
@@ -121,25 +131,33 @@ class GUI:
             return
         self.send_chat()
         self.clear_text()
+        
 
     def clear_text(self):
         self.enter_text_widget.delete(1.0, 'end')
 
     ##AQUI SE ENCRIPTA y manda
     def send_chat(self):
-        #senders_name = self.name_widget.get().strip() + ": "
+        key = self.name_widget.get()
         data = self.enter_text_widget.get(1.0, 'end').strip()
         encripted = self.encrypt(data)
-        print(encripted)
         tam =  len(encripted)
+
+        while len(encripted) < 236:
+            encripted.append(0)
+        
+
         if tam < 236:
             lista =  self.encrypt(str(tam))
             message = bytearray(ASCP+version+lista+function+state+id_session+encripted)
-            #k = pyDes.des(key, pyDes.ECB, "\0\0\0\0\0\0\0\0", pad = None, padmode = pyDes.PAD_PKCS5)
-            #d = k.encrypt(message)
+            #key_hex= "ff5ca85bccd4c387"
+            key1 = bytes.fromhex(key)
+            k = pyDes.des(key1, pyDes.ECB, "\0\0\0\0\0\0\0\0", pad = None, padmode = pyDes.PAD_PKCS5)
+            
+            d = k.encrypt(message)
             self.chat_transcript_area.insert('end', data + '\n')
             self.chat_transcript_area.yview(END)
-            self.client_socket.send(message)
+            self.client_socket.send(d)
             self.enter_text_widget.delete(1.0, 'end')
 
         else:
