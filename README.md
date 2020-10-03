@@ -30,6 +30,6 @@ Por último, `pruebas.py` es donde se estuvieron haciendo pruebas para comprobar
 Se usan los comandos (cada uno en una terminal distinta y en ese orden respectivamente): 
 
 ```
-python3 Server.py 
+python3 server.py 
 python3 GUI.py
 ```
