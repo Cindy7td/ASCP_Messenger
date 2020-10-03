@@ -20,7 +20,7 @@ En el archivo `server.py`, es donde se encuentra la parte del código que se enc
 
 En el archivo `GUI.py`, se encuentra la sección que se encarga de la interfaz gráfica, además de conectarse con el servidor, escuchar, encriptar y desencriptar mensajes para enviar o recibir.
 
-El `README.md` viene siendo este archivo donde se incluyen la información necesaria para comprender más a fondo la aplicación.
+El `README.md` viene siendo este archivo donde se incluye la información necesaria para comprender más a fondo la aplicación.
 
 Por último, `pruebas.py` es donde se estuvieron haciendo pruebas para comprobar la funcionalidad de algunas funciones, sin embargo es irrelevante para el proyecto.
 
