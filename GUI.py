@@ -5,16 +5,20 @@ import threading
 import pyDes
 from tkinter import messagebox
 
+q=353
+x= 233
+alpha=3
+
 ASCP = [65,83,67,80]
 version = [48,48,48,48,49]
-function = [48,48]
+function = [48,49]
 state = [48,48,48,48]
 id_session = [48,48,48,48] 
-#key = bytearray()
 
 class GUI:
     client_socket = None
-    last_received_message = None
+    authentication = False
+    Keyshared= None
 
     def __init__(self, master):
         self.root = master
@@ -28,20 +32,48 @@ class GUI:
 
     def initialize_socket(self):
         self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        remote_ip = '13.57.9.228' 
-        remote_port = 3024 
+        remote_ip = '192.168.0.20' 
+        remote_port = 2020
         self.client_socket.connect((remote_ip, remote_port)) 
 
     def initialize_gui(self):
         self.root.title("Socket Chat")
         self.root.resizable(0, 0)
         self.display_chat_box()
-        self.display_name_section()
+        #self.display_name_section()
         self.display_chat_entry_box()
 
     def listen_for_incoming_messages_in_a_thread(self):
         thread = threading.Thread(target=self.receive_message_from_server, args=(self.client_socket,))
         thread.start()
+
+    def diffiehellman(alpha, x, q):
+        #Es alpha a la x mod q
+        if x == 0: 
+            return 1
+        else:
+            if x % 2 == 0: 
+                multi = (alpha * alpha)
+                mod = multi % q
+                div = x / 2
+                return diffiehellman(mod, div, q)
+            else:
+                return alpha * diffiehellman(alpha, x - 1, q) % q
+            
+
+    def keyis(key, x, q): 
+        ### k a la x mod q
+        if x == 0: 
+            return 1
+        else:
+            if x % 2 == 0: 
+                keys = key * key
+                div = x / 2
+                mod = keys % q
+                return keyis(mod, div, q)
+            else:
+                return key * keyis(key, x - 1, q) % q
+
 
     def encrypt(self,text):
         encrypted = []
@@ -53,27 +85,45 @@ class GUI:
     # Aqui se desencripta 
     def receive_message_from_server(self, so):
         while True:
-            buffer = so.recv(1024)
-            key = self.name_widget.get()
+            buffer = so.recv(2048)
+            #key = self.name_widget.get()
             if not buffer:
                 break
-            #key_hex= "ff5ca85bccd4c387"
-            key1 = bytes.fromhex(key)
-            k = pyDes.des(key1, pyDes.ECB, "\0\0\0\0\0\0\0\0", pad=None, padmode=pyDes.PAD_PKCS5)
-            msg = k.decrypt(buffer)
-            decrypted = ""
-            end = msg[9]
-            print(end)
-            x = 0
-            y = 19
-            while x < end:
-                x+=1
-                y+=1
-                letra = chr(msg[y])
-                decrypted += letra
             
-            self.chat_transcript_area.insert('end', decrypted + '\n')
-            self.chat_transcript_area.yview(END)
+            if buffer[11] == 2:
+                self.authentication = True
+                mensaje = ""
+                end = buffer[9]
+                x = 0
+                y = 19
+                while x < end:
+                    x+=1
+                    y+=1
+                    letra = chr(buffer[y])
+                    mensaje += letra
+                
+                llave = self.keyis(int(mensaje),x,q)
+                self.Keyshared = llave
+                
+            else:
+                key1 = self.Keyshared
+                k = pyDes.des(key1, pyDes.ECB, "\0\0\0\0\0\0\0\0", pad=None, padmode=pyDes.PAD_PKCS5)
+                msg = k.decrypt(buffer)
+            
+                decrypted = ""
+                end = msg[9]
+                
+                x = 0
+                y = 19
+                while x < end:
+                    x+=1
+                    y+=1
+                    letra = chr(msg[y])
+                    decrypted += letra
+
+                self.chat_transcript_area.insert('end', "Tu:" + '\n')
+                self.chat_transcript_area.insert('end', decrypted + '\n')
+                self.chat_transcript_area.yview(END)
 
         so.close()
 
@@ -82,7 +132,7 @@ class GUI:
         Label(frame, text='Key:', font=("Helvetica", 16)).pack(side='left', padx=10)
         self.name_widget = Entry(frame, width=50, borderwidth=2)
         self.name_widget.pack(side='left', anchor='e')
-        self.join_button = Button(frame, text="Join", width=10, command=self.on_join).pack(side='left')
+        #self.join_button = Button(frame, text="Join", width=10, command=self.on_join).pack(side='left')
         frame.pack(side='top', anchor='nw')
 
     def display_chat_box(self):
@@ -104,31 +154,30 @@ class GUI:
         self.enter_text_widget.bind('<Return>', self.on_enter_key_pressed)
         frame.pack(side='top')
 
-
-    # Este creo que no importa
-    def on_join(self):
-        self.name_widget.config(state='disabled')
-        newJoined =  self.encrypt(" " + self.name_widget.get())
-        end = len(newJoined)
-        x=0
-        ktostring = ""
+    #llave
+    # def on_join(self):
+    #    self.name_widget.config(state='disabled')
+    #    newJoined =  self.encrypt(" " + self.name_widget.get())
+    #    end = len(newJoined)
+    #    x=0
+    #    ktostring = ""
         
-        while x < end-1:
-            x+=1
-            letra = chr(newJoined[x])
-            ktostring += letra
+    #    while x < end-1:
+    #        x+=1
+    #        letra = chr(newJoined[x])
+    #        ktostring += letra
        
-        ktobytes = bytes.fromhex(ktostring)
+    #    ktobytes = bytes.fromhex(ktostring)
         
-        key = ktobytes
-        print(key)
+    #    key = ktobytes
+    #    print(key)
 
 
     def on_enter_key_pressed(self, event):
-        if len(self.name_widget.get()) == 0:
-            messagebox.showerror(
-                "Enter your key", "Enter your name to send a message")
-            return
+        #if len(self.name_widget.get()) == 0:
+            #messagebox.showerror(
+           #     "Enter your key", "Enter your name to send a message")
+            #return
         self.send_chat()
         self.clear_text()
         
@@ -138,26 +187,39 @@ class GUI:
 
     ##AQUI SE ENCRIPTA y manda
     def send_chat(self):
-        key = self.name_widget.get()
+        #key = self.name_widget.get()
         data = self.enter_text_widget.get(1.0, 'end').strip()
         encripted = self.encrypt(data)
-        tam =  len(encripted)
+        tam =  len(encripted) 
 
         while len(encripted) < 236:
             encripted.append(0)
-        
 
         if tam < 236:
-            lista =  self.encrypt(str(tam))
-            message = bytearray(ASCP+version+lista+function+state+id_session+encripted)
-            #key_hex= "ff5ca85bccd4c387"
-            key1 = bytes.fromhex(key)
-            k = pyDes.des(key1, pyDes.ECB, "\0\0\0\0\0\0\0\0", pad = None, padmode = pyDes.PAD_PKCS5)
-            
-            d = k.encrypt(message)
+            if self.authentication == True:
+                funcion = [48,50]
+                publicY = self.diffiehellman(alpha,x,q)
+
+                while len(publicY) < 236:
+                    publicY.append(0)
+
+                publicYEnc = self.encrypt(publicY)
+                message = bytearray(ASCP+version+lista+funcion+state+id_session+publicYEnc)
+
+                self.authentication = False
+                self.client_socket.send(message)
+
+            else:
+                lista =  self.encrypt(str(tam))
+                message = bytearray(ASCP+version+lista+function+state+id_session+encripted)
+                key1 = self.Keyshared
+                k = pyDes.des(key1, pyDes.ECB, "\0\0\0\0\0\0\0\0", pad = None, padmode = pyDes.PAD_PKCS5)
+                d = k.encrypt(message)
+                self.client_socket.send(d)
+
+            self.chat_transcript_area.insert('end', "Yo:" + '\n')
             self.chat_transcript_area.insert('end', data + '\n')
-            self.chat_transcript_area.yview(END)
-            self.client_socket.send(d)
+            self.chat_transcript_area.yview(END) 
             self.enter_text_widget.delete(1.0, 'end')
 
         else:

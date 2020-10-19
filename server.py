@@ -18,7 +18,7 @@ class ChatServer:
 
     def create_listening_server(self):
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        local_ip = '172.16.112.127'
+        local_ip = '192.168.0.20'
         local_port = 2020
         self.server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.server_socket.bind((local_ip, local_port))
