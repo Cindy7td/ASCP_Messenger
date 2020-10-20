@@ -1,12 +1,6 @@
 import socket
 import threading
 
-ASCP = [65,83,67,80]
-version = [48,48,48,48,49]
-function = [48,48]
-state = [48,48,48,48]
-id_session = [48,48,48,48]
-
 class ChatServer:
     clients_list = []
 
@@ -18,7 +12,7 @@ class ChatServer:
 
     def create_listening_server(self):
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        local_ip = '192.168.0.20'
+        local_ip = '172.16.112.127'
         local_port = 2020
         self.server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.server_socket.bind((local_ip, local_port))
@@ -26,17 +20,11 @@ class ChatServer:
         self.server_socket.listen(5)
         self.receive_messages_in_a_new_thread()
 
-    def encrypt(self,text):
-        encrypted = []
-        for character in text:
-            cNum = ord(character)
-            encrypted.append(cNum)
-        return encrypted
 
     #ACA SE RECIBE
     def receive_messages(self, so):
         while True:
-            incoming_buffer = so.recv(256)
+            incoming_buffer = so.recv(1024)
             if not incoming_buffer:
                 break
             self.last_received_message = incoming_buffer

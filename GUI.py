@@ -7,7 +7,7 @@ from tkinter import messagebox
 
 q=353
 x= 233
-alpha=3
+alpha= 3
 
 ASCP = [65,83,67,80]
 version = [48,48,48,48,49]
@@ -18,7 +18,8 @@ id_session = [48,48,48,48]
 class GUI:
     client_socket = None
     authentication = False
-    Keyshared= None
+    difi = True
+    Keyshared= 0
 
     def __init__(self, master):
         self.root = master
@@ -32,7 +33,7 @@ class GUI:
 
     def initialize_socket(self):
         self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        remote_ip = '192.168.0.20' 
+        remote_ip = '172.16.112.127' 
         remote_port = 2020
         self.client_socket.connect((remote_ip, remote_port)) 
 
@@ -47,7 +48,7 @@ class GUI:
         thread = threading.Thread(target=self.receive_message_from_server, args=(self.client_socket,))
         thread.start()
 
-    def diffiehellman(alpha, x, q):
+    def diffiehellman(self,alpha, x, q):
         #Es alpha a la x mod q
         if x == 0: 
             return 1
@@ -56,25 +57,10 @@ class GUI:
                 multi = (alpha * alpha)
                 mod = multi % q
                 div = x / 2
-                return diffiehellman(mod, div, q)
+                return self.diffiehellman(mod, div, q)
             else:
-                return alpha * diffiehellman(alpha, x - 1, q) % q
+                return alpha * self.diffiehellman(alpha, x - 1, q) % q
             
-
-    def keyis(key, x, q): 
-        ### k a la x mod q
-        if x == 0: 
-            return 1
-        else:
-            if x % 2 == 0: 
-                keys = key * key
-                div = x / 2
-                mod = keys % q
-                return keyis(mod, div, q)
-            else:
-                return key * keyis(key, x - 1, q) % q
-
-
     def encrypt(self,text):
         encrypted = []
         for character in text:
@@ -90,24 +76,34 @@ class GUI:
             if not buffer:
                 break
             
-            if buffer[11] == 2:
+            if buffer[11] == 50 or buffer[11] == 51:
                 self.authentication = True
+                self.difi = False
                 mensaje = ""
-                end = buffer[9]
+                end = buffer[9] 
+                endtonumber = chr(end)
+               
                 x = 0
                 y = 19
-                while x < end:
+                while x < int(endtonumber):
                     x+=1
                     y+=1
                     letra = chr(buffer[y])
                     mensaje += letra
-                
-                llave = self.keyis(int(mensaje),x,q)
+               
+
+                publicYA = int(mensaje)
+                print("esto recibi:")
+                print(publicYA)
+                llave = self.diffiehellman(publicYA,x,q)
+                print("soy la llave privada:")
+                print(llave)
                 self.Keyshared = llave
-                
+              
             else:
                 key1 = self.Keyshared
-                k = pyDes.des(key1, pyDes.ECB, "\0\0\0\0\0\0\0\0", pad=None, padmode=pyDes.PAD_PKCS5)
+                ks = key1.to_bytes(8,'big')
+                k = pyDes.des(ks, pyDes.ECB, "\0\0\0\0\0\0\0\0", pad=None, padmode=pyDes.PAD_PKCS5)
                 msg = k.decrypt(buffer)
             
                 decrypted = ""
@@ -196,24 +192,55 @@ class GUI:
             encripted.append(0)
 
         if tam < 236:
+            
             if self.authentication == True:
-                funcion = [48,50]
+                print("esras en autenticacion, est es cuando somos las qe nos conectamos")
+                funcion = [48,3]
                 publicY = self.diffiehellman(alpha,x,q)
+                print("DESPUES DE DF")
+                print(publicY)
+                publicYEnc = self.encrypt(str(publicY))
+                tam =  len(publicYEnc) 
+                lista =  self.encrypt(str(tam))
+                while len(publicYEnc) < 236:
+                    publicYEnc.append(0)
+                
+                message = bytearray(ASCP+version+lista+funcion+state+id_session+publicYEnc)
+                self.authentication = False
+                self.difi = False
+                print("se mando public y")
+                self.client_socket.send(message)
 
-                while len(publicY) < 236:
-                    publicY.append(0)
+            if self.difi == True:
+                print("tu inicias comunicacion")
 
-                publicYEnc = self.encrypt(publicY)
+                funcion = [48,2]
+                publicY = self.diffiehellman(alpha,x,q)
+                publicYEnc = self.encrypt(str(publicY))
+                tam =  len(publicYEnc) 
+                lista =  self.encrypt(str(tam))
+
+                while len(publicYEnc) < 236:
+                    publicYEnc.append(0)
+                
                 message = bytearray(ASCP+version+lista+funcion+state+id_session+publicYEnc)
 
                 self.authentication = False
+                self.difi = False
                 self.client_socket.send(message)
 
             else:
+                
                 lista =  self.encrypt(str(tam))
                 message = bytearray(ASCP+version+lista+function+state+id_session+encripted)
+                print("se supone que ya tenemos la k en ambas partes")
+                print(self.Keyshared)
                 key1 = self.Keyshared
-                k = pyDes.des(key1, pyDes.ECB, "\0\0\0\0\0\0\0\0", pad = None, padmode = pyDes.PAD_PKCS5)
+                print(key1)
+                ks = key1.to_bytes(8,'big')
+                print("esto es ks")
+                print(ks)
+                k = pyDes.des(ks, pyDes.ECB, "\0\0\0\0\0\0\0\0", pad = None, padmode = pyDes.PAD_PKCS5)
                 d = k.encrypt(message)
                 self.client_socket.send(d)
 
