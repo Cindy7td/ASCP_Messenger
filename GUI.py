@@ -11,7 +11,7 @@ x = random.randint(1, q-1)
 y = str(pow(a,x,q))
 
 dh = "q=2426697107,a=17123207,y=" + y
-dh2 = "q=2426697107,a=17123207,y=1724324231"
+dh2 = "q=2426697107,a=17123207,y=" + y
 
 ASCP = bytes('ASCP',"ascii")
 state = bytes('0000',"ascii")
@@ -39,7 +39,7 @@ class GUI:
 
     def initialize_socket(self):
         self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        remote_ip = '172.16.112.127' 
+        remote_ip = '172.16.112.129' 
         remote_port = 2020
         self.client_socket.connect((remote_ip, remote_port)) 
 
@@ -168,7 +168,7 @@ class GUI:
 
         if tam < 236:
             if self.authentication == True:
-                print("Estas en autenticacion, esto es cuando somos las que nos conectamos")
+                print("Estas en autenticacion")
                 
                 funcion = 3
                 fn = funcion.to_bytes(2,'big')
@@ -198,8 +198,7 @@ class GUI:
                 fn = funcion.to_bytes(2,'big')
                 publicYEnc = self.encrypt(dh)
                 tam =  len(publicYEnc) 
-                lista =  tam.to_bytes(1,'big')
-                
+                lista =  tam.to_bytes(1,'big')              
 
                 message = bytearray()
                 message += ASCP
