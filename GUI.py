@@ -1,9 +1,11 @@
+import tkinter
 from tkinter import Tk, Frame, Scrollbar, Label, END, Entry, Text, VERTICAL, Button
 from tkinter import messagebox
 import threading
 import random
 import socket
 import pyDes
+import hashlib
 
 q = 2426697107
 a = 17123207
@@ -39,7 +41,7 @@ class GUI:
 
     def initialize_socket(self):
         self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        remote_ip = '172.16.112.129' 
+        remote_ip = '172.16.112.128' 
         remote_port = 2020
         self.client_socket.connect((remote_ip, remote_port)) 
 
@@ -48,6 +50,7 @@ class GUI:
         self.root.resizable(0, 0)
         self.display_chat_box()
         self.display_chat_entry_box()
+       # self.display_checkbox()
 
     def listen_for_incoming_messages_in_a_thread(self):
         thread = threading.Thread(target=self.receive_message_from_server, args=(self.client_socket,))
@@ -65,6 +68,24 @@ class GUI:
                 return self.diffiehellman(mod, div, q)
             else:
                 return alpha * self.diffiehellman(alpha, x - 1, q) % q
+
+    def setMAC(self, h):
+        i = 1
+        for d in h:
+            self.mensaje[i] = d
+            i = i + 1
+    
+    def isAMatch(self,buffer):
+        bytenew = buffer[0:236]
+        digest = hashlib.sha1(bytenew).digest()
+        i = 236
+        x = 0
+        while i < 256:
+            if digest[x] != buffer[i]:
+                return False
+            i += 1
+            x += 1
+        return True
 
     def encrypt(self,text):
         cNum = bytes(text,"ascii")
@@ -109,10 +130,12 @@ class GUI:
             else:
                 key1 = self.Keyshared
                 ks = key1.to_bytes(8,'big')
-                k = pyDes.des(ks, pyDes.ECB, "\0\0\0\0\0\0\0\0", pad=None, padmode=pyDes.PAD_PKCS5)
+                k = pyDes.des(ks, pyDes.ECB, "\0\0\0\0\0\0\0\0", pad="\0", padmode=pyDes.PAD_NORMAL)
                 msg = k.decrypt(buffer)
             
                 decrypted = ""
+                print(decrypted)
+                print(len(msg))
                 end = msg[9]
                 
                 x1 = 0
@@ -123,10 +146,21 @@ class GUI:
                     letra = chr(msg[y1])
                     decrypted += letra
 
+                mac = self.isAMatch(msg)
+                
+
+                if mac == False:
+                    messagebox.showinfo(message="Oh-no! Te hackearon :c", title="ALERTA")
+
                 self.chat_transcript_area.insert('end', "Tu:" + '\n')
                 self.chat_transcript_area.insert('end', decrypted + '\n')
                 self.chat_transcript_area.yview(END)
         so.close()
+
+#    def display_checkbox(self):
+#        self.checkbox = tk.Checkbutton(self, text="Opción")
+#        self.checkbox.place(x=40, y=70)
+#        self.place(width=300, height=200)
 
     def display_name_section(self):
         frame = Frame()
@@ -164,9 +198,9 @@ class GUI:
     def send_chat(self):
         data = self.enter_text_widget.get(1.0, 'end').strip()
         encripted = self.encrypt(data)
-        tam =  len(encripted) 
-
-        if tam < 236:
+        tam =  len(encripted)
+        
+        if tam < 216:
             if self.authentication == True:
                 print("Estas en autenticacion")
                 
@@ -185,7 +219,7 @@ class GUI:
                 message += id_session 
                 message += publicYEnc
                 
-                while len(message) < 256:
+                while len(message) < 2:
                     message += bytes('0', "ascii")
                
                 self.authentication = False
@@ -209,7 +243,7 @@ class GUI:
                 message += id_session 
                 message += publicYEnc
                 
-                while len(message) < 256:
+                while len(message) < 236:
                     message += bytes('0', "ascii")
 
                 print("Mensaje:")
@@ -219,6 +253,7 @@ class GUI:
                 self.client_socket.send(message)
 
             else:
+
                 lista =  tam.to_bytes(1,'big')
                 #fn = function.to_bytes(2,'big')
                 message = bytearray()
@@ -229,13 +264,17 @@ class GUI:
                 message += state 
                 message += id_session 
                 message += encripted
-                
-                while len(message) < 256:
+
+                while len(message) < 236:
                     message += bytes('0', "ascii")
+                
+                digest = hashlib.sha1(message).digest()
+                message += digest
+                
 
                 key1 = self.Keyshared
                 ks = key1.to_bytes(8,'big')
-                k = pyDes.des(ks, pyDes.ECB, "\0\0\0\0\0\0\0\0", pad = None, padmode = pyDes.PAD_PKCS5)
+                k = pyDes.des(ks, pyDes.ECB, "\0\0\0\0\0\0\0\0", pad="\0", padmode=pyDes.PAD_NORMAL)
                 d = k.encrypt(message)
                 self.client_socket.send(d)
 
