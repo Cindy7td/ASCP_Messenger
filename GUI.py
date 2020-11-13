@@ -45,7 +45,7 @@ class GUI:
 
     def initialize_socket(self):
         self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        remote_ip = '172.16.112.128' 
+        remote_ip = '172.16.112.124' 
         remote_port = 2020
         self.client_socket.connect((remote_ip, remote_port)) 
 
@@ -237,7 +237,7 @@ class GUI:
                 message += id_session 
                 message += publicYEnc
                 
-                while len(message) < 2:
+                while len(message) < 256:
                     message += bytes('0', "ascii")
                
                 self.authentication = False
@@ -261,7 +261,7 @@ class GUI:
                 message += id_session 
                 message += publicYEnc
                 
-                while len(message) < 236:
+                while len(message) < 256:
                     message += bytes('0', "ascii")
 
                 print("Mensaje:")
@@ -297,7 +297,7 @@ class GUI:
                 key1 = self.Keyshared
                 ks = key1.to_bytes(8,'big')
                 k = pyDes.des(ks, pyDes.ECB, "\0\0\0\0\0\0\0\0", pad=None, padmode=pyDes.PAD_NORMAL)
-                d = k.encrypt(message, pad=None, padmode=pyDes.PAD_NORMAL)
+                d = k.encrypt(message)
                 self.client_socket.send(d)
 
             self.chat_transcript_area.insert('end', "Yo:" + '\n')
