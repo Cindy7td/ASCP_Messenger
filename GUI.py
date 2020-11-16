@@ -7,6 +7,8 @@ import random
 import socket
 import pyDes
 import hashlib
+import requests
+import json
 
 q = 2426697107
 a = 17123207 
@@ -30,22 +32,25 @@ class GUI:
     difi = True
     Keyshared = 0
     macMala = 0
+    objid = None
+    token = None
 
     def __init__(self, master):
         self.root = master
         self.chat_transcript_area = None
-        self.name_widget = None
+        self.email_widget = None
+        self.password_widget = None
+        self.ip_widget = None
         self.enter_text_widget = None
         self.join_button = None
+        self.connect_button = None
         self.leche = IntVar()
-        self.initialize_socket()
         self.initialize_gui()
         self.listen_for_incoming_messages_in_a_thread()
 
 
-    def initialize_socket(self):
+    def initialize_socket(self, remote_ip):
         self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        remote_ip = '172.16.112.124' 
         remote_port = 2020
         self.client_socket.connect((remote_ip, remote_port)) 
 
@@ -55,6 +60,9 @@ class GUI:
         self.display_chat_box()
         self.display_chat_entry_box()
         self.display_checkbox()
+        self.display_email_section()
+        self.display_password_section()
+        self.display_ip_section()
 
     def listen_for_incoming_messages_in_a_thread(self):
         thread = threading.Thread(target=self.receive_message_from_server, args=(self.client_socket,))
@@ -160,6 +168,45 @@ class GUI:
                 self.chat_transcript_area.yview(END)
         so.close()
 
+    def login(self):
+        self.password_widget.config(state='normal')
+        email = " " + self.password_widget.get()
+        password = " " + self.email_widget.get()
+        print("si sirvo")
+        print(new, newJoined)
+        self.log_in(email, password)
+    
+    def log_in(self, email, pwd):
+        url = 'https://api.backendless.com/9176FE65-2FB5-2B00-FFED-BEB6A480BC00/0397420A-AA65-4BA2-9A1F-D4C9583099C8/users/login'
+        data = {'login':email, 'password':pwd}
+        headers = {'content-type': 'application/json'}
+
+        x = requests.post(url, data = json.dumps(data), headers = headers)
+
+        j = json.loads(x.text)
+        self.objid = j['objectId']
+        self.token = j['user-token']
+        #print("\tObjectID: " + self.objid)
+        #print("\tToken: " + self.token)
+
+    def other_ip(self, other_email):
+        url = 'https://api.backendless.com/9176FE65-2FB5-2B00-FFED-BEB6A480BC00/0397420A-AA65-4BA2-9A1F-D4C9583099C8/data/Users?where=email%3D%27' + other_email + '%27'
+        headers = {'content-type': 'application/json', 'user-token': self.token}
+        x = requests.get(url, headers = headers)
+
+        j = json.loads(x.text)
+        other_ip = j[0]['last_ip']
+        print("\tOther IP: " +  other_ip)
+        return other_ip
+        
+    def connect(self):
+        self.ip_widget.config(state='normal')
+        connectIP = " " + self.ip_widget.get()
+        print("yo tambien")
+        print(connectIP)
+        friend = self.other_ip(connectIP)
+        self.initialize_socket(friend)
+        
     def cambiarEstado(self):
         if self.leche.get() == 1:
             self.macMala = 0
@@ -180,28 +227,44 @@ class GUI:
         self.checkbox = Checkbutton(frame, text="Enviar MAC incorrecta", variable=self.leche, 
             onvalue=1, offvalue=0, command = self.cambiarEstado).pack(anchor=W)
 
-    def display_name_section(self):
+    def display_email_section(self):
         frame = Frame()
-        Label(frame, text='Key:', font=("Helvetica", 16)).pack(side='left', padx=10)
-        self.name_widget = Entry(frame, width=50, borderwidth=2)
-        self.name_widget.pack(side='left', anchor='e')
+        Label(frame, text='Email:', font=("Helvetica", 13)).pack(side='left', padx=10)
+        self.email_widget = Entry(frame, width=50, borderwidth=2)
+        self.email_widget.pack(side='left', anchor='e')
+        frame.pack(side='top', anchor='nw')
+
+    def display_password_section(self):
+        frame = Frame()
+        Label(frame, text='Password:', font=("Helvetica", 13)).pack(side='left', padx=10)
+        self.password_widget = Entry(frame, width=50, borderwidth=2)
+        self.password_widget.pack(side='left', anchor='e')
+        self.join_button = Button(frame, text="Login", width=10, command=self.login).pack(side='left')
+        frame.pack(side='top', anchor='nw')
+
+    def display_ip_section(self):
+        frame = Frame()
+        Label(frame, text='Other email:', font=("Helvetica", 13)).pack(side='left', padx=10)
+        self.ip_widget = Entry(frame, width=50, borderwidth=2)
+        self.ip_widget.pack(side='left', anchor='e')
+        self.connect_button = Button(frame, text="Connect", width=10, command=self.connect).pack(side='left')
         frame.pack(side='top', anchor='nw')
 
     def display_chat_box(self):
         frame = Frame()
         Label(frame, text='Chat Box:', font=("Serif", 12)).pack(side='top', anchor='w')
-        self.chat_transcript_area = Text(frame, width=60, height=10, font=("Serif", 12))
+        self.chat_transcript_area = Text(frame, width=80, height=7, font=("Serif", 11))
         scrollbar = Scrollbar(frame, command=self.chat_transcript_area.yview, orient=VERTICAL)
         self.chat_transcript_area.config(yscrollcommand=scrollbar.set)
         self.chat_transcript_area.bind('<KeyPress>', lambda e: 'break')
-        self.chat_transcript_area.pack(side='left', padx=10)
+        self.chat_transcript_area.pack(side='left', padx=8)
         scrollbar.pack(side='right', fill='y')
         frame.pack(side='top')
 
     def display_chat_entry_box(self):
         frame = Frame()
         Label(frame, text='Enter message:', font=("Serif", 12)).pack(side='top', anchor='w')
-        self.enter_text_widget = Text(frame, width=60, height=3, font=("Serif", 12))
+        self.enter_text_widget = Text(frame, width=80, height=3, font=("Serif", 11))
         self.enter_text_widget.pack(side='left', pady=15)
         self.enter_text_widget.bind('<Return>', self.on_enter_key_pressed)
         frame.pack(side='top')
@@ -272,7 +335,6 @@ class GUI:
 
             else:
                 lista =  tam.to_bytes(1,'big')
-                #fn = function.to_bytes(2,'big')
                 message = bytearray()
                 message += ASCP
                 message += version
