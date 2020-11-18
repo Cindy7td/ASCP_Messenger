@@ -32,7 +32,7 @@ class GUI:
     difi = True
     Keyshared = 0
     macMala = 0
-    objid = None
+    #objid = None
     token = None
 
     def __init__(self, master):
@@ -46,13 +46,13 @@ class GUI:
         self.connect_button = None
         self.leche = IntVar()
         self.initialize_gui()
-        self.listen_for_incoming_messages_in_a_thread()
 
 
     def initialize_socket(self, remote_ip):
         self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         remote_port = 2020
-        self.client_socket.connect((remote_ip, remote_port)) 
+        self.client_socket.connect((remote_ip, remote_port))
+        self.listen_for_incoming_messages_in_a_thread() 
 
     def initialize_gui(self):
         self.root.title("Socket Chat")
@@ -170,10 +170,10 @@ class GUI:
 
     def login(self):
         self.password_widget.config(state='normal')
-        email = " " + self.password_widget.get()
-        password = " " + self.email_widget.get()
+        email = "" + self.email_widget.get()
+        password = "" + self.password_widget.get()
         print("si sirvo")
-        print(new, newJoined)
+        print(email, password)
         self.log_in(email, password)
     
     def log_in(self, email, pwd):
@@ -184,10 +184,9 @@ class GUI:
         x = requests.post(url, data = json.dumps(data), headers = headers)
 
         j = json.loads(x.text)
-        self.objid = j['objectId']
+        
+        objid = j['objectId']
         self.token = j['user-token']
-        #print("\tObjectID: " + self.objid)
-        #print("\tToken: " + self.token)
 
     def other_ip(self, other_email):
         url = 'https://api.backendless.com/9176FE65-2FB5-2B00-FFED-BEB6A480BC00/0397420A-AA65-4BA2-9A1F-D4C9583099C8/data/Users?where=email%3D%27' + other_email + '%27'
@@ -195,13 +194,14 @@ class GUI:
         x = requests.get(url, headers = headers)
 
         j = json.loads(x.text)
+
         other_ip = j[0]['last_ip']
-        print("\tOther IP: " +  other_ip)
+        print("Other IP: " +  other_ip)
         return other_ip
         
     def connect(self):
         self.ip_widget.config(state='normal')
-        connectIP = " " + self.ip_widget.get()
+        connectIP = "" + self.ip_widget.get()
         print("yo tambien")
         print(connectIP)
         friend = self.other_ip(connectIP)
@@ -253,7 +253,7 @@ class GUI:
     def display_chat_box(self):
         frame = Frame()
         Label(frame, text='Chat Box:', font=("Serif", 12)).pack(side='top', anchor='w')
-        self.chat_transcript_area = Text(frame, width=80, height=7, font=("Serif", 11))
+        self.chat_transcript_area = Text(frame, width=80, height=7, font=("Serif", 12))
         scrollbar = Scrollbar(frame, command=self.chat_transcript_area.yview, orient=VERTICAL)
         self.chat_transcript_area.config(yscrollcommand=scrollbar.set)
         self.chat_transcript_area.bind('<KeyPress>', lambda e: 'break')
@@ -264,7 +264,7 @@ class GUI:
     def display_chat_entry_box(self):
         frame = Frame()
         Label(frame, text='Enter message:', font=("Serif", 12)).pack(side='top', anchor='w')
-        self.enter_text_widget = Text(frame, width=80, height=3, font=("Serif", 11))
+        self.enter_text_widget = Text(frame, width=80, height=3, font=("Serif", 12))
         self.enter_text_widget.pack(side='left', pady=15)
         self.enter_text_widget.bind('<Return>', self.on_enter_key_pressed)
         frame.pack(side='top')
